@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # DESCRIPTION: This file, `utils.sh`, contains a collection of utility functions that I have found useful across various projects.
 # I created this repository to consolidate these functions in one place and share them with others who might find them helpful.
 # I plan to continue adding new functions as I discover or develop them.
@@ -117,6 +115,14 @@ function display_help() {
         gentree)
             echo "Usage: gentree <application_type>"
             echo "Generates a directory tree and saves it in a Markdown file."
+            echo "Supports ignoring specific directories based on application type: python, node, rails, or shell."
+            echo "Parameters:"
+            echo "  - \$1: The type of application (e.g., python, node, rails, shell)."
+            echo "Example:"
+            echo "  gentree python"
+            ;;
+        *)
+            echo "No help available for $func"
             ;;
         clean_temp)
             echo "Usage: clean_temp"
@@ -608,31 +614,15 @@ function gentree() {
 
     local apptype=$1
     local ignores
-    local patterns="*.yml,*.yaml,*.md"
 
     function ignores_per_app() {
         local apptype=$1
         case $apptype in
-            python)
-                ignores=".git,__pycache__,.vscode,.idea,.venv"
-                patterns="$patterns,*.py"
-                ;;
-            node)
-                ignores=".git,node_modules"
-                patterns="$patterns,*.js,*.json"
-                ;;
-            rails)
-                ignores=".git,log,tmp"
-                patterns="$patterns,*.rb"
-                ;;
-            shell)
-                ignores=".git"
-                patterns="$patterns,*.sh"
-                ;;
-            *)
-                log error "Invalid application type"
-                return 1
-                ;;
+            python) ignores=".git,__pycache__,.vscode,.idea,.venv" ;;
+            node)   ignores=".git,node_modules" ;;
+            rails)  ignores=".git,log,tmp" ;;
+            shell)  ignores=".git" ;;
+            *)      log error "Invalid application type"; return 1 ;;
         esac
     }
 
@@ -642,7 +632,18 @@ function gentree() {
     fi
 
     ignores_per_app "$apptype"
-    tree -I "$ignores" -P "$patterns" -L 4 -a --noreport | sed 's/^/    /' | sed '1s/^    /# Project Tree\n\n    /' > project_tree.md
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    if ! tree -I "$ignores" -L 4 -a -d --noreport > project_tree.md; then
+        log error "Error generating directory tree"
+        return 1
+    fi
+
+    sed -i 's/^/    /' project_tree.md
+    sed -i '1s/^    /# Project Tree\n\n    /' project_tree.md
+
     log success "Directory tree has been saved to project_tree.md"
 }
 
